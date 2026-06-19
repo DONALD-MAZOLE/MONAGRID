@@ -1,0 +1,6 @@
+tensorflow-cpu
+pillow
+streamlit
+numpy
+openai
+python-dotenv
