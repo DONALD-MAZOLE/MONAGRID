@@ -284,96 +284,94 @@ def main():
             # Preview uploaded images in a responsive compact grid
             if uploaded_files:
                 st.markdown("#### Preview Uploaded Images")
-                cols_count = min(4, len(uploaded_files))
-                preview_cols = st.columns(cols_count, gap="small")
 
-                # Choose smaller thumbnails for a compact card-like layout
-                if cols_count <= 2:
-                    thumb_width = 280
-                elif cols_count == 3:
-                    thumb_width = 180
-                else:
-                    thumb_width = 140
+                # Build an HTML grid of image cards so we can control responsive breakpoints via CSS
+                grid_html = [
+                    "<style>",
+                    ".mg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:8px;padding:6px 0}",
+                    ".mg-grid .card{display:flex;flex-direction:column;align-items:center;justify-content:flex-start}",
+                    ".mg-card-img{width:100%;height:140px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,0.04);display:block}",
+                    ".mg-caption{font-size:12px;color:#cfcfcf;margin-top:8px;word-break:break-word;text-align:center;padding:0 6px}",
+                    "@media (max-width:600px){ .mg-grid{grid-template-columns:repeat(3,1fr);gap:8px} .mg-card-img{height:100px} .mg-caption{font-size:11px} }",
+                    "</style>",
+                    "<div class='mg-grid'>"
+                ]
 
-                for i, f in enumerate(uploaded_files):
+                for f in uploaded_files:
                     try:
                         img = Image.open(f).convert('RGB')
-                        # encode to base64 so we can render a compact HTML card and control spacing
                         buf = BytesIO()
                         img.save(buf, format='PNG')
                         b64 = base64.b64encode(buf.getvalue()).decode()
 
-                        # make square cards by using same width and height (object-fit:cover)
-                        thumb_size = thumb_width
-
-                        with preview_cols[i % cols_count]:
-                            st.markdown(
-                                f"<div style='display:flex;flex-direction:column;align-items:center;margin:6px 8px;'>"
-                                f"<div style='width:{thumb_size}px;height:{thumb_size}px;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.04);'>"
-                                f"<img src='data:image/png;base64,{b64}' style='width:100%;height:100%;object-fit:cover;display:block;'/>"
-                                f"</div>"
-                                f"<div style='font-size:12px;color:#cfcfcf;margin-top:8px;word-break:break-all;text-align:center;max-width:{thumb_size}px'>{f.name}</div>"
-                                f"</div>",
-                                unsafe_allow_html=True
-                            )
+                        card = (
+                            "<div class='card'>"
+                            f"<img class='mg-card-img' src='data:image/png;base64,{b64}' alt='{f.name}'/>"
+                            f"<div class='mg-caption'>{f.name}</div>"
+                            "</div>"
+                        )
+                        grid_html.append(card)
                     except Exception:
-                        with preview_cols[i % cols_count]:
-                            st.write(f"Preview unavailable: {f.name}")
+                        fallback = f"<div class='card'><div class='mg-caption'>Preview unavailable: {f.name}</div></div>"
+                        grid_html.append(fallback)
 
-                # existing analyze button + processing flow continues
-                if st.button("Analyze images", type="primary"):
-                    results = []
-                    progress = st.progress(0)
-                    status = st.empty()
-                    
-                    for idx, file in enumerate(uploaded_files):
-                        status.markdown(f"`System status: Processing node {idx + 1} of {len(uploaded_files)}...`")
-                        try:
-                            image = Image.open(file).convert('RGB')
-                            processed_image = process_image(image)
-                            predictions = predict(interpreter, processed_image)
-                            
-                            class_index = np.argmax(predictions)
-                            confidence = predictions[class_index]
-                            condition = labels[class_index].split(' ')[1]
-                            condition_display = format_condition(condition)
-                            
-                            results.append({
-                                'Asset Identification File': file.name,
-                                'Operational Status Evaluation': condition_display,
-                                'Precision Confidence Level': f"{confidence:.2%}"
-                            })
-                        except Exception as e:
-                            results.append({
-                                'Asset Identification File': file.name,
-                                'Operational Status Evaluation': 'Processing Malfunction',
-                                'Precision Confidence Level': str(e)
-                            })
-                        progress.progress((idx + 1) / len(uploaded_files))
-                    
-                    status.success("Analysis Complete!")
-                    df = pd.DataFrame(results)
+                grid_html.append("</div>")
+                st.markdown('\n'.join(grid_html), unsafe_allow_html=True)
 
-                    # Dashboard Metrics Row (Total Panels, Issues Found, Clean Panels)
-                    total = len(df)
-                    problems = len(df[~df['Operational Status Evaluation'].str.contains('Normal|Clean|Optimal', na=False)])
-                    clean = total - problems
+            # existing analyze button + processing flow continues
+            if st.button("Analyze images", type="primary"):
+                results = []
+                progress = st.progress(0)
+                status = st.empty()
+                
+                for idx, file in enumerate(uploaded_files):
+                    status.markdown(f"`System status: Processing node {idx + 1} of {len(uploaded_files)}...`")
+                    try:
+                        image = Image.open(file).convert('RGB')
+                        processed_image = process_image(image)
+                        predictions = predict(interpreter, processed_image)
+                        
+                        class_index = np.argmax(predictions)
+                        confidence = predictions[class_index]
+                        condition = labels[class_index].split(' ')[1]
+                        condition_display = format_condition(condition)
+                        
+                        results.append({
+                            'Asset Identification File': file.name,
+                            'Operational Status Evaluation': condition_display,
+                            'Precision Confidence Level': f"{confidence:.2%}"
+                        })
+                    except Exception as e:
+                        results.append({
+                            'Asset Identification File': file.name,
+                            'Operational Status Evaluation': 'Processing Malfunction',
+                            'Precision Confidence Level': str(e)
+                        })
+                    progress.progress((idx + 1) / len(uploaded_files))
+                
+                status.success("Analysis Complete!")
+                df = pd.DataFrame(results)
 
-                    m1, m2, m3 = st.columns(3)
-                    m1.metric("Total Panels", f"{total}")
-                    m2.metric("Issues Found", f"{problems}")
-                    m3.metric("Clean Panels", f"{clean}")
+                # Dashboard Metrics Row (Total Panels, Issues Found, Clean Panels)
+                total = len(df)
+                problems = len(df[~df['Operational Status Evaluation'].str.contains('Normal|Clean|Optimal', na=False)])
+                clean = total - problems
 
-                    # Present the detailed results table immediately (no download): rename columns for clarity
-                    st.markdown("### Detailed Results")
-                    df_display = df.rename(columns={
-                        'Asset Identification File': 'Image',
-                        'Operational Status Evaluation': 'Condition',
-                        'Precision Confidence Level': 'Confidence'
-                    })
-                    # Make the row numbering 1-based for user-friendly counts (instead of default 0-based)
-                    df_display.index = range(1, len(df_display) + 1)
-                    st.dataframe(df_display, use_container_width=True)
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Total Panels", f"{total}")
+                m2.metric("Issues Found", f"{problems}")
+                m3.metric("Clean Panels", f"{clean}")
+
+                # Present the detailed results table immediately (no download): rename columns for clarity
+                st.markdown("### Detailed Results")
+                df_display = df.rename(columns={
+                    'Asset Identification File': 'Image',
+                    'Operational Status Evaluation': 'Condition',
+                    'Precision Confidence Level': 'Confidence'
+                })
+                # Make the row numbering 1-based for user-friendly counts (instead of default 0-based)
+                df_display.index = range(1, len(df_display) + 1)
+                st.dataframe(df_display, use_container_width=True)
 
     except FileNotFoundError:
         st.error("System Malfunction: Core files missing from workspace environment.")
