@@ -4,13 +4,20 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image, ImageOps
 import pandas as pd
+import os
+from pathlib import Path
 
 # Set page config first
 st.set_page_config(layout='wide', page_title="Monagrid.com")
 
+# Dynamic directory path tracking
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = os.path.join(BASE_DIR, "model_unquant.tflite")
+LABELS_PATH = os.path.join(BASE_DIR, "labels.txt")
+
 def load_model():
-    """Load the TFLite model"""
-    interpreter = tf.lite.Interpreter(model_path="model_unquant.tflite")
+    """Load the TFLite model using the absolute path to the Backend folder"""
+    interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
     interpreter.allocate_tensors()
     return interpreter
 
@@ -54,9 +61,9 @@ def main():
     st.title("MONAGRID")
     
     try:
-        # Load model and labels
+        # Load model and labels using explicit paths
         interpreter = load_model()
-        with open("labels.txt", "r") as f:
+        with open(LABELS_PATH, "r") as f:
             labels = [line.strip() for line in f.readlines()]
         
         # Create tabs for different modes
@@ -174,7 +181,7 @@ def main():
     
     except FileNotFoundError:
         st.error("Model or labels file not found!")
-        st.info("Please ensure 'converted_model.tflite' and 'labels.txt' are in the app directory")
+        st.info(f"Expected Locations:\n- Model: {MODEL_PATH}\n- Labels: {LABELS_PATH}")
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
 
