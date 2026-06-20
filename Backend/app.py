@@ -190,24 +190,16 @@ def main():
     st.markdown(
         """
         <style>
-        /* Layout selected files inside the Streamlit file_uploader as three-per-row cards */
-        [data-testid="stFileUploader"] div[role="list"] {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 12px !important;
-            align-items: flex-start !important;
-        }
-        [data-testid="stFileUploader"] div[role="list"] > * {
-            flex: 0 0 calc(33.333% - 12px) !important;
-            max-width: calc(33.333% - 12px) !important;
-            box-sizing: border-box !important;
-            margin: 0 !important;
-        }
-        /* Make inner file thumbnails and labels wrap nicely inside the card */
-        [data-testid="stFileUploader"] div[role="list"] img { max-width: 100% !important; height: auto !important; display: block !important; }
-        [data-testid="stFileUploader"] div[role="list"] .stFileUploadButton, [data-testid="stFileUploader"] div[role="list"] button { display: inline-block !important; }
+        /* Hide Streamlit's default selected-file list to avoid inconsistent mobile layout
+           We'll use our own responsive preview grid (rendered below) which enforces 3-per-row on all viewports. */
+        [data-testid="stFileUploader"] div[role="list"] { display: none !important; }
+
+        /* Keep the upload button visible and styled */
+        [data-testid="stFileUploader"] button, .stFileUploader .stButton>button { display: inline-block !important; }
+
+        /* As a fallback (if Streamlit changes structure), attempt to force horizontal wrapping on small viewports */
         @media (max-width: 600px) {
-            [data-testid="stFileUploader"] div[role="list"] > * { flex: 0 0 calc(33.333% - 8px) !important; max-width: calc(33.333% - 8px) !important; }
+            [data-testid="stFileUploader"] { padding: 8px !important; }
         }
         </style>
         """,
@@ -431,53 +423,6 @@ def main():
                     })
                     # Make the row numbering 1-based for user-friendly counts (instead of default 0-based)
                     df_display.index = range(1, len(df_display) + 1)
-
-                    # Render a dark-themed HTML table instead of Streamlit's default dataframe renderer
-                    dark_table_css = """
-                    <style>
-                    /* Dark table with stronger, visible dividers between rows and columns */
-                    .mg-dark-table{
-                        width:100%;
-                        border-collapse:collapse;
-                        background:transparent;
-                        color:#e7e7e7;
-                        border-radius:10px;
-                        overflow:hidden;
-                        border:1px solid rgba(255,255,255,0.04); /* outer subtle border */
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.45) inset;
-                    }
-                    .mg-dark-table thead th{
-                        background:#0f1720;
-                        color:#cfcfcf;
-                        padding:14px 12px;
-                        text-align:left;
-                        border-bottom:2px solid rgba(255,255,255,0.12); /* stronger header divider */
-                    }
-                    .mg-dark-table tbody td{
-                        background:transparent;
-                        padding:12px;
-                        border-bottom:1px solid rgba(255,255,255,0.06); /* stronger horizontal divider */
-                        border-right:1px solid rgba(255,255,255,0.04); /* more visible vertical divider */
-                        color:#e7e7e7;
-                    }
-                    .mg-dark-table tbody tr:nth-child(odd) td{
-                        background:rgba(255,255,255,0.01);
-                    }
-                    .mg-dark-table tbody tr:hover td{
-                        background:rgba(255,255,255,0.05);
-                    }
-                    .mg-dark-table th:first-child, .mg-dark-table td:first-child{
-                        width:64px;
-                        padding-left:18px;
-                    }
-                    .mg-dark-table td, .mg-dark-table th{font-size:14px}
-                    .mg-dark-table thead th:first-child{width:64px}
-                    /* Remove right border on last column to avoid double border at table edge */
-                    .mg-dark-table td:last-child, .mg-dark-table th:last-child{border-right:none}
-                    </style>
-                    """
-
-                    st.markdown(dark_table_css, unsafe_allow_html=True)
 
                     # Convert dataframe to HTML and render
                     df_css = """
