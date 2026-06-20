@@ -3,6 +3,7 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 from PIL import Image, ImageOps
+from io import BytesIO
 import pandas as pd
 import os
 from pathlib import Path
@@ -48,21 +49,18 @@ def predict(interpreter, image_data):
 def format_condition(condition):
     """Map raw text label parts to operational asset standard phrasing"""
     if "Physical" in condition:
-        return "Physical Structural Damage"
+        return "Physical Damage"
     elif "Electrical" in condition:
-        return "Electrical Circuitry Anomaly"
+        return "Electrical Damage"
     elif "Dusty" in condition:
         return "Soiling / Dust Accumulation"
     elif "Bird" in condition:
-        return "Bio-Fouling (Bird Droppings)"
+        return "Bird Droppings"
     elif "Clean" in condition:
-        return "Optimal Operational State"
+        return "Normal / Clean"
     return condition
 
 def main():
-    # Ensure a place to store the last fleet CSV so the download is always available
-    st.session_state.setdefault('fleet_csv', None)
-
     # Hide Streamlit main menu (removes Print option) and footer for a cleaner kiosk-like UI
     st.markdown(
         """
@@ -153,6 +151,36 @@ def main():
     
         /* Tweak selected tab background/indicator removal to keep clean black look */
         [role="tab"][aria-selected="true"]:not(:focus) { background: transparent !important; box-shadow: none !important; }
+
+        /* Dataframe / table dark-theme overrides to remove white backgrounds */
+        /* Target Streamlit dataframe containers and table elements */
+        .stDataFrame, .stDataFrame table, .stDataFrame thead, .stDataFrame tbody, .stDataFrame th, .stDataFrame td, .stDataFrame tr { background: transparent !important; color: #e7e7e7 !important; }
+        .stDataFrame table { border-collapse: collapse !important; }
+        .stDataFrame thead th { background: rgba(255,255,255,0.03) !important; color: #cfcfcf !important; font-weight:600 !important; }
+        .stDataFrame tbody tr td { background: rgba(255,255,255,0.01) !important; color: #e7e7e7 !important; }
+        .stDataFrame th, .stDataFrame td { border-bottom: 1px solid rgba(255,255,255,0.04) !important; }
+        /* Wider table container rounded look */
+        .stDataFrame > div:first-child { background: transparent !important; }
+        /* Ensure any default white cards around tables are transparent */
+        .element-container .stTable, .stTable, .stDataFrameContainer { background: transparent !important; }
+
+        /* Additional aggressive overrides to catch Streamlit internal wrappers */
+        div[data-testid="stDataFrame"], div[data-testid="stTable"], .stApp div[role="table"], .stApp table, .stApp thead, .stApp tbody, .stApp th, .stApp td {
+            background: transparent !important;
+            background-color: transparent !important;
+            color: #e7e7e7 !important;
+        }
+        /* Remove white rounded inner boxes often added by Streamlit's table renderer */
+        .stDataFrame div[data-testid], .stDataFrame div[role="grid"], .stDataFrame .css-1v3fvcr, .stDataFrame .css-18e3th9 {
+            background: transparent !important;
+        }
+        /* Ensure table headers and cells use subtle dark shades */
+        .stApp thead th { background: rgba(255,255,255,0.03) !important; color: #cfcfcf !important; }
+        .stApp tbody td { background: transparent !important; color: #e7e7e7 !important; }
+        .stApp th, .stApp td { border-bottom: 1px solid rgba(255,255,255,0.04) !important; }
+
+        /* Make sure the Detailed Results heading remains white */
+        h3, h2 { color: #ffffff !important; }
         </style>
         """,
         unsafe_allow_html=True
@@ -186,20 +214,6 @@ def main():
     else:
         st.markdown("")
 
-    # Persistent download controls moved to header area (replaces sidebar download)
-    if st.session_state.get('fleet_csv'):
-        dl_col1, dl_col2 = st.columns([4,1])
-        with dl_col2:
-            st.download_button(
-                "Download Last Fleet CSV",
-                st.session_state['fleet_csv'],
-                "monagrid_fleet_maintenance_report.csv",
-                "text/csv",
-                key="header_download"
-            )
-            if st.button("Clear", key="clear_report_header"):
-                st.session_state['fleet_csv'] = None
-
     # clean separator
     st.write("---")
     
@@ -212,7 +226,7 @@ def main():
         
         # --- TAB 1: SINGLE ASSET ---
         with tab1:
-            st.markdown("### **Real-time Panel Inspection**")
+            st.markdown("### **Real-time Solar Panel Inspection**")
             uploaded_file = st.file_uploader("Upload a single image of a solar panel", type=['jpg', 'png', 'jpeg'], key="single_uploader")
 
             if uploaded_file:
@@ -262,13 +276,52 @@ def main():
         
         # --- TAB 2: BATCH FLEET OPERATIONS ---
         with tab2:
-            st.markdown("### **Fleet Asset Batch Aggregator**")
+            st.markdown("### *Real-Time Solar Panel Inspection*")
             uploaded_files = st.file_uploader("Upload multiple images of solar panels", 
                                             type=['jpg', 'png', 'jpeg'],
                                             accept_multiple_files=True, key="batch_uploader")
             
+            # Preview uploaded images in a responsive compact grid
             if uploaded_files:
-                if st.button("Analyze Fleet Array", type="primary"):
+                st.markdown("#### Preview Uploaded Images")
+                cols_count = min(4, len(uploaded_files))
+                preview_cols = st.columns(cols_count, gap="small")
+
+                # Choose smaller thumbnails for a compact card-like layout
+                if cols_count <= 2:
+                    thumb_width = 280
+                elif cols_count == 3:
+                    thumb_width = 180
+                else:
+                    thumb_width = 140
+
+                for i, f in enumerate(uploaded_files):
+                    try:
+                        img = Image.open(f).convert('RGB')
+                        # encode to base64 so we can render a compact HTML card and control spacing
+                        buf = BytesIO()
+                        img.save(buf, format='PNG')
+                        b64 = base64.b64encode(buf.getvalue()).decode()
+
+                        # make square cards by using same width and height (object-fit:cover)
+                        thumb_size = thumb_width
+
+                        with preview_cols[i % cols_count]:
+                            st.markdown(
+                                f"<div style='display:flex;flex-direction:column;align-items:center;margin:6px 8px;'>"
+                                f"<div style='width:{thumb_size}px;height:{thumb_size}px;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.04);'>"
+                                f"<img src='data:image/png;base64,{b64}' style='width:100%;height:100%;object-fit:cover;display:block;'/>"
+                                f"</div>"
+                                f"<div style='font-size:12px;color:#cfcfcf;margin-top:8px;word-break:break-all;text-align:center;max-width:{thumb_size}px'>{f.name}</div>"
+                                f"</div>",
+                                unsafe_allow_html=True
+                            )
+                    except Exception:
+                        with preview_cols[i % cols_count]:
+                            st.write(f"Preview unavailable: {f.name}")
+
+                # existing analyze button + processing flow continues
+                if st.button("Analyze images", type="primary"):
                     results = []
                     progress = st.progress(0)
                     status = st.empty()
@@ -298,30 +351,30 @@ def main():
                             })
                         progress.progress((idx + 1) / len(uploaded_files))
                     
-                    status.success("🚀 Complete Fleet Evaluation Array Compiled Successfully!")
+                    status.success("Analysis Complete!")
                     df = pd.DataFrame(results)
-                    
-                    # Dashboard Metrics Row
+
+                    # Dashboard Metrics Row (Total Panels, Issues Found, Clean Panels)
                     total = len(df)
-                    # Filter for issues that require human interaction (Physical, Electrical, Dust, Bird)
-                    problems = len(df[~df['Operational Status Evaluation'].str.contains('Optimal', na=False)])
-                    clean = total - problems;
-                    
+                    problems = len(df[~df['Operational Status Evaluation'].str.contains('Normal|Clean|Optimal', na=False)])
+                    clean = total - problems
+
                     m1, m2, m3 = st.columns(3)
-                    m1.metric("Total Array Scope Evaluated", f"{total} Modules")
-                    m2.metric("Action Required (Fault Tracker)", f"{problems} Anomalies", delta=f"{problems} Risks" if problems > 0 else "0 Risks", delta_color="inverse")
-                    m3.metric("Nominal Capacity Array Modules", f"{clean} Active")
-                    
-                    st.markdown("### **Fleet Structural Audit Log**")
-                    # Wrap the table in an expander to keep page height in check on mobile while still being easy to open
-                    with st.expander("Fleet Structural Audit Log (expand to view table)", expanded=True):
-                        st.dataframe(df, use_container_width=True)
-                        
-                    csv = df.to_csv(index=False)
-                    # Store the CSV in session state and surface the download in the header so users never have to scroll far to download
-                    st.session_state['fleet_csv'] = csv
-                    st.success("Fleet CSV prepared — use the 'Download Last Fleet CSV' control at the top to download the report.")
-        
+                    m1.metric("Total Panels", f"{total}")
+                    m2.metric("Issues Found", f"{problems}")
+                    m3.metric("Clean Panels", f"{clean}")
+
+                    # Present the detailed results table immediately (no download): rename columns for clarity
+                    st.markdown("### Detailed Results")
+                    df_display = df.rename(columns={
+                        'Asset Identification File': 'Image',
+                        'Operational Status Evaluation': 'Condition',
+                        'Precision Confidence Level': 'Confidence'
+                    })
+                    # Make the row numbering 1-based for user-friendly counts (instead of default 0-based)
+                    df_display.index = range(1, len(df_display) + 1)
+                    st.dataframe(df_display, use_container_width=True)
+
     except FileNotFoundError:
         st.error("System Malfunction: Core files missing from workspace environment.")
         st.info(f"Target verification trace lines:\n- Model Resource Location: {MODEL_PATH}\n- Target Labels Configuration: {LABELS_PATH}")
