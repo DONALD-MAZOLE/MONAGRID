@@ -186,6 +186,66 @@ def main():
         unsafe_allow_html=True
     )
 
+    # additional uploader layout tweaks: show selected files 3-per-row
+    st.markdown(
+        """
+        <style>
+        /* Layout selected files inside the Streamlit file_uploader as three-per-row cards */
+        [data-testid="stFileUploader"] div[role="list"] {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 12px !important;
+            align-items: flex-start !important;
+        }
+        [data-testid="stFileUploader"] div[role="list"] > * {
+            flex: 0 0 calc(33.333% - 12px) !important;
+            max-width: calc(33.333% - 12px) !important;
+            box-sizing: border-box !important;
+            margin: 0 !important;
+        }
+        /* Make inner file thumbnails and labels wrap nicely inside the card */
+        [data-testid="stFileUploader"] div[role="list"] img { max-width: 100% !important; height: auto !important; display: block !important; }
+        [data-testid="stFileUploader"] div[role="list"] .stFileUploadButton, [data-testid="stFileUploader"] div[role="list"] button { display: inline-block !important; }
+        @media (max-width: 600px) {
+            [data-testid="stFileUploader"] div[role="list"] > * { flex: 0 0 calc(33.333% - 8px) !important; max-width: calc(33.333% - 8px) !important; }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Force table/dataframe wrappers fully transparent (stronger overrides)
+    st.markdown(
+        """
+        <style>
+        /* Broad selectors to remove any white backgrounds in Streamlit tables/dataframes */
+        .stDataFrame, .stTable, .stDataFrameContainer, .element-container .stTable, div[data-testid="stDataFrame"], div[data-testid="stTable"] {
+            background: transparent !important;
+            background-color: transparent !important;
+            color: #e7e7e7 !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+        /* Target any nested wrapper elements and force transparency */
+        .stApp div[role="table"], .stApp table, .stApp thead, .stApp tbody, .stApp th, .stApp td, .stApp tr, .stApp div[data-testid] {
+            background: transparent !important;
+            background-color: transparent !important;
+            color: #e7e7e7 !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+        /* Header and cell styling (dark header) */
+        .stDataFrame thead th, .stTable thead th, .stApp thead th { background: rgba(255,255,255,0.03) !important; color: #cfcfcf !important; }
+        .stDataFrame tbody td, .stTable tbody td, .stApp tbody td { background: transparent !important; color: #e7e7e7 !important; }
+        /* Aggressively remove inner white cards or rounded boxes */
+        .stDataFrame div, .stTable div, div[class*="stDataFrame"], div[class*="stTable"], .css-" { background: transparent !important; }
+        /* AG Grid / React grid fallback */
+        .ag-root, .ag-theme-streamlit, .ag-body-viewport, .ag-center-cols-viewport { background: transparent !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # Minimal sticky logo at top-left for a clean UI (no tagline or extra text)
     if os.path.exists(LOGO_PATH):
         with open(LOGO_PATH, 'rb') as img_f:
@@ -318,61 +378,147 @@ def main():
                 grid_html.append("</div>")
                 st.markdown('\n'.join(grid_html), unsafe_allow_html=True)
 
-            # existing analyze button + processing flow continues
-            if st.button("Analyze images", type="primary"):
-                results = []
-                progress = st.progress(0)
-                status = st.empty()
-                
-                for idx, file in enumerate(uploaded_files):
-                    status.markdown(f"`System status: Processing node {idx + 1} of {len(uploaded_files)}...`")
-                    try:
-                        image = Image.open(file).convert('RGB')
-                        processed_image = process_image(image)
-                        predictions = predict(interpreter, processed_image)
-                        
-                        class_index = np.argmax(predictions)
-                        confidence = predictions[class_index]
-                        condition = labels[class_index].split(' ')[1]
-                        condition_display = format_condition(condition)
-                        
-                        results.append({
-                            'Asset Identification File': file.name,
-                            'Operational Status Evaluation': condition_display,
-                            'Precision Confidence Level': f"{confidence:.2%}"
-                        })
-                    except Exception as e:
-                        results.append({
-                            'Asset Identification File': file.name,
-                            'Operational Status Evaluation': 'Processing Malfunction',
-                            'Precision Confidence Level': str(e)
-                        })
-                    progress.progress((idx + 1) / len(uploaded_files))
-                
-                status.success("Analysis Complete!")
-                df = pd.DataFrame(results)
+                # Show Analyze button only after uploads (mimic Single Analysis behavior)
+                if st.button("Analyze images", type="primary"):
+                    results = []
+                    progress = st.progress(0)
+                    status = st.empty()
 
-                # Dashboard Metrics Row (Total Panels, Issues Found, Clean Panels)
-                total = len(df)
-                problems = len(df[~df['Operational Status Evaluation'].str.contains('Normal|Clean|Optimal', na=False)])
-                clean = total - problems
+                    for idx, file in enumerate(uploaded_files):
+                        status.markdown(f"`System status: Processing node {idx + 1} of {len(uploaded_files)}...`")
+                        try:
+                            image = Image.open(file).convert('RGB')
+                            processed_image = process_image(image)
+                            predictions = predict(interpreter, processed_image)
 
-                m1, m2, m3 = st.columns(3)
-                m1.metric("Total Panels", f"{total}")
-                m2.metric("Issues Found", f"{problems}")
-                m3.metric("Clean Panels", f"{clean}")
+                            class_index = np.argmax(predictions)
+                            confidence = predictions[class_index]
+                            condition = labels[class_index].split(' ')[1]
+                            condition_display = format_condition(condition)
 
-                # Present the detailed results table immediately (no download): rename columns for clarity
-                st.markdown("### Detailed Results")
-                df_display = df.rename(columns={
-                    'Asset Identification File': 'Image',
-                    'Operational Status Evaluation': 'Condition',
-                    'Precision Confidence Level': 'Confidence'
-                })
-                # Make the row numbering 1-based for user-friendly counts (instead of default 0-based)
-                df_display.index = range(1, len(df_display) + 1)
-                st.dataframe(df_display, use_container_width=True)
+                            results.append({
+                                'Asset Identification File': file.name,
+                                'Operational Status Evaluation': condition_display,
+                                'Precision Confidence Level': f"{confidence:.2%}"
+                            })
+                        except Exception as e:
+                            results.append({
+                                'Asset Identification File': file.name,
+                                'Operational Status Evaluation': 'Processing Malfunction',
+                                'Precision Confidence Level': str(e)
+                            })
+                        progress.progress((idx + 1) / len(uploaded_files))
 
+                    status.success("Analysis Complete!")
+                    df = pd.DataFrame(results)
+
+                    # Dashboard Metrics Row (Total Panels, Issues Found, Clean Panels)
+                    total = len(df)
+                    problems = len(df[~df['Operational Status Evaluation'].str.contains('Normal|Clean|Optimal', na=False)])
+                    clean = total - problems
+
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("Total Panels", f"{total}")
+                    m2.metric("Issues Found", f"{problems}")
+                    m3.metric("Clean Panels", f"{clean}")
+
+                    # Present the detailed results table immediately (no download): rename columns for clarity
+                    st.markdown("### Detailed Results")
+                    df_display = df.rename(columns={
+                        'Asset Identification File': 'Image',
+                        'Operational Status Evaluation': 'Condition',
+                        'Precision Confidence Level': 'Confidence'
+                    })
+                    # Make the row numbering 1-based for user-friendly counts (instead of default 0-based)
+                    df_display.index = range(1, len(df_display) + 1)
+
+                    # Render a dark-themed HTML table instead of Streamlit's default dataframe renderer
+                    dark_table_css = """
+                    <style>
+                    /* Dark table with stronger, visible dividers between rows and columns */
+                    .mg-dark-table{
+                        width:100%;
+                        border-collapse:collapse;
+                        background:transparent;
+                        color:#e7e7e7;
+                        border-radius:10px;
+                        overflow:hidden;
+                        border:1px solid rgba(255,255,255,0.04); /* outer subtle border */
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.45) inset;
+                    }
+                    .mg-dark-table thead th{
+                        background:#0f1720;
+                        color:#cfcfcf;
+                        padding:14px 12px;
+                        text-align:left;
+                        border-bottom:2px solid rgba(255,255,255,0.12); /* stronger header divider */
+                    }
+                    .mg-dark-table tbody td{
+                        background:transparent;
+                        padding:12px;
+                        border-bottom:1px solid rgba(255,255,255,0.06); /* stronger horizontal divider */
+                        border-right:1px solid rgba(255,255,255,0.04); /* more visible vertical divider */
+                        color:#e7e7e7;
+                    }
+                    .mg-dark-table tbody tr:nth-child(odd) td{
+                        background:rgba(255,255,255,0.01);
+                    }
+                    .mg-dark-table tbody tr:hover td{
+                        background:rgba(255,255,255,0.05);
+                    }
+                    .mg-dark-table th:first-child, .mg-dark-table td:first-child{
+                        width:64px;
+                        padding-left:18px;
+                    }
+                    .mg-dark-table td, .mg-dark-table th{font-size:14px}
+                    .mg-dark-table thead th:first-child{width:64px}
+                    /* Remove right border on last column to avoid double border at table edge */
+                    .mg-dark-table td:last-child, .mg-dark-table th:last-child{border-right:none}
+                    </style>
+                    """
+
+                    st.markdown(dark_table_css, unsafe_allow_html=True)
+
+                    # Convert dataframe to HTML and render
+                    df_css = """
+                    <style>
+                    /* Dark container for Streamlit dataframe with visible separators and toolbar */
+                    .element-container .stDataFrameContainer, div[data-testid="stDataFrame"] {
+                        background-color: #0b0b0b !important;
+                        border-radius: 10px !important;
+                        padding: 8px !important;
+                        border: 1px solid rgba(255,255,255,0.04) !important;
+                        box-shadow: none !important;
+                    }
+                    /* Inner table styling */
+                    .stDataFrame table { width:100% !important; border-collapse:collapse !important; color:#e7e7e7 !important; }
+                    .stDataFrame thead th {
+                        background: rgba(255,255,255,0.03) !important;
+                        color: #cfcfcf !important;
+                        padding: 14px 12px !important;
+                        border-bottom: 2px solid rgba(255,255,255,0.08) !important;
+                    }
+                    .stDataFrame tbody td {
+                        background: transparent !important;
+                        padding: 12px !important;
+                        border-bottom: 1px solid rgba(255,255,255,0.06) !important; /* horizontal divider */
+                        border-right: 1px solid rgba(255,255,255,0.04) !important; /* vertical divider */
+                        color: #e7e7e7 !important;
+                    }
+                    .stDataFrame tbody tr:nth-child(odd) td { background: rgba(255,255,255,0.01) !important; }
+                    .stDataFrame tbody tr:hover td { background: rgba(255,255,255,0.05) !important; }
+                    .stDataFrame td:last-child, .stDataFrame th:last-child { border-right: none !important; }
+                    .stDataFrame thead th:first-child, .stDataFrame tbody td:first-child { padding-left: 18px !important; width:64px !important; }
+                    /* Ensure Streamlit's toolbar (view/download) stays visible and aligned */
+                    [data-testid="stToolbar"] { background: transparent !important; }
+                    /* Make sure the wrapper card around the dataframe does not add a white background */
+                    .stDataFrameContainer, .stDataFrame { background: transparent !important; }
+                    </style>
+                    """
+
+                    st.markdown(df_css, unsafe_allow_html=True)
+                    # Use native st.dataframe so toolbar icons appear; this will now be dark-styled by the CSS above
+                    st.dataframe(df_display, use_container_width=True)
     except FileNotFoundError:
         st.error("System Malfunction: Core files missing from workspace environment.")
         st.info(f"Target verification trace lines:\n- Model Resource Location: {MODEL_PATH}\n- Target Labels Configuration: {LABELS_PATH}")
