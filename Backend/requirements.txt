@@ -1,5 +1,6 @@
-tensorflow-cpu
+fastapi
+uvicorn[standard]
 pillow
-streamlit
-numpy
-pandas
+python-multipart
+torch
+torchvision

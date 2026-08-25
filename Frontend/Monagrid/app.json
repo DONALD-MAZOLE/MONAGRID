@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Monagrid",
+    "slug": "Monagrid",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#000000",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Monagrid needs access to your photos to inspect solar panel images.",
+        "NSCameraUsageDescription": "Monagrid needs access to your camera to capture solar panel images."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#000000",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "CAMERA"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Monagrid needs access to your photos to inspect solar panel images.",
+          "cameraPermission": "Monagrid needs access to your camera to capture solar panel images."
+        }
+      ]
+    ]
+  }
+}

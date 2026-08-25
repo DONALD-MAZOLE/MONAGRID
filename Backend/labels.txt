@@ -1,5 +1,0 @@
-0 Dusty
-1 Physical Damage
-2 Bird Droppings
-3 Electrical Damage
-4 Clean
