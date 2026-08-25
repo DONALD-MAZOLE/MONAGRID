@@ -4,27 +4,12 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+// Production Render Backend URL
+export const RENDER_BACKEND_URL = 'https://monagrid-backend.onrender.com';
+
 const getBackendUrl = () => {
-  // 1. Browser (Expo Web) -> use localhost
-  if (Platform.OS === 'web') {
-    return 'http://localhost:8000';
-  }
-
-  // 2. Physical Phone (Expo Go) -> auto-detect laptop IP from Metro host
-  const hostUri =
-    Constants.expoConfig?.hostUri ||
-    Constants.manifest?.debuggerHost ||
-    Constants.manifest2?.extra?.expoGo?.debuggerHost;
-
-  if (hostUri) {
-    const ip = hostUri.split(':')[0];
-    if (ip) {
-      return `http://${ip}:8000`;
-    }
-  }
-
-  // 3. Fallback Wi-Fi IP
-  return 'http://192.168.40.87:8000';
+  // Point directly to deployed Render backend
+  return RENDER_BACKEND_URL;
 };
 
 export const API_BASE_URL = getBackendUrl();
