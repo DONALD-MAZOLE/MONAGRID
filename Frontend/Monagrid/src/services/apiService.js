@@ -1,10 +1,46 @@
 // src/services/apiService.js
 // All API calls to the Monagrid FastAPI backend
 import { ENDPOINTS } from '../config/api';
+import { Platform } from 'react-native';
+
+// ─────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Normalise any thrown value to a readable string.
+ */
+function toMessage(e) {
+  if (!e) return 'Unknown error';
+  if (typeof e === 'string') return e;
+  if (e instanceof Error) return e.message || String(e);
+  if (typeof e === 'object') {
+    return e.message || e.detail || JSON.stringify(e);
+  }
+  return String(e);
+}
+
+/**
+ * Build a FormData entry that works on both React Native (file URI)
+ * and browser (fetch the URI → Blob).
+ */
+async function buildFileEntry(uri, fileName, mimeType) {
+  if (Platform.OS === 'web') {
+    // In the browser, fetch the blob-URL / data-URL created by ImagePicker
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return new File([blob], fileName || 'panel.jpg', { type: mimeType || 'image/jpeg' });
+  }
+  // React Native — return the RN-style object
+  return { uri, name: fileName || 'panel.jpg', type: mimeType || 'image/jpeg' };
+}
+
+// ─────────────────────────────────────────────────────────────
+// API functions
+// ─────────────────────────────────────────────────────────────
 
 /**
  * Check if the backend is reachable and the model is loaded.
- * @returns {Promise<{ok: boolean, detail: string}>}
  */
 export async function checkHealth() {
   try {
@@ -12,80 +48,74 @@ export async function checkHealth() {
     const data = await res.json();
     return { ok: data.status === 'ok' && data.model_loaded, detail: JSON.stringify(data) };
   } catch (e) {
-    return { ok: false, detail: e.message };
+    return { ok: false, detail: toMessage(e) };
   }
 }
 
 /**
- * Send a single image to the /predict endpoint.
- * @param {string} uri       - Local file URI from ImagePicker
- * @param {string} fileName  - File name for the form-data field
- * @param {string} mimeType  - MIME type (image/jpeg or image/png)
- * @returns {Promise<PredictionResult>}
- *
- * PredictionResult shape:
- * {
- *   class_index: number,      // 0 = Healthy, 1 = Faulty
- *   label: string,            // "Healthy" | "Faulty"
- *   confidence: number,       // 0.0 – 1.0
- *   confidence_pct: string,   // "93.12%"
- *   severity: string,         // "ok" | "critical"
- *   description: string,
- *   probabilities: { Healthy: number, Faulty: number }
- * }
+ * Send a single image to POST /predict.
  */
 export async function predictSingle(uri, fileName, mimeType = 'image/jpeg') {
-  const formData = new FormData();
-  formData.append('file', {
-    uri,
-    name: fileName || 'panel.jpg',
-    type: mimeType,
-  });
+  let formData;
 
-  const res = await fetch(ENDPOINTS.predictSingle, {
-    method: 'POST',
-    body: formData,
-    // Do NOT set Content-Type manually — let fetch set it with the boundary
-  });
+  try {
+    const fileEntry = await buildFileEntry(uri, fileName, mimeType);
+    formData = new FormData();
+    formData.append('file', fileEntry);
+  } catch (e) {
+    throw new Error(`Could not read image: ${toMessage(e)}`);
+  }
+
+  let res;
+  try {
+    res = await fetch(ENDPOINTS.predictSingle, {
+      method: 'POST',
+      body: formData,
+      // Do NOT manually set Content-Type — browser/RN will add the multipart boundary
+    });
+  } catch (e) {
+    throw new Error(`Cannot reach backend at ${ENDPOINTS.predictSingle}. Is the server running? (${toMessage(e)})`);
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `Server error ${res.status}`);
+    const detail = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail);
+    throw new Error(detail || `Server error ${res.status}`);
   }
 
   return res.json();
 }
 
 /**
- * Send multiple images to the /predict/batch endpoint.
- * @param {Array<{uri: string, fileName: string, mimeType: string}>} assets
- * @returns {Promise<Array<BatchResult>>}
- *
- * BatchResult shape:
- * {
- *   filename: string,
- *   prediction: PredictionResult,
- *   error: string | null
- * }
+ * Send multiple images to POST /predict/batch.
  */
 export async function predictBatch(assets) {
-  const formData = new FormData();
-  for (const asset of assets) {
-    formData.append('files', {
-      uri: asset.uri,
-      name: asset.fileName || 'panel.jpg',
-      type: asset.mimeType || 'image/jpeg',
-    });
+  let formData;
+
+  try {
+    formData = new FormData();
+    for (const asset of assets) {
+      const fileEntry = await buildFileEntry(asset.uri, asset.fileName, asset.mimeType);
+      formData.append('files', fileEntry);
+    }
+  } catch (e) {
+    throw new Error(`Could not read images: ${toMessage(e)}`);
   }
 
-  const res = await fetch(ENDPOINTS.predictBatch, {
-    method: 'POST',
-    body: formData,
-  });
+  let res;
+  try {
+    res = await fetch(ENDPOINTS.predictBatch, {
+      method: 'POST',
+      body: formData,
+    });
+  } catch (e) {
+    throw new Error(`Cannot reach backend at ${ENDPOINTS.predictBatch}. Is the server running? (${toMessage(e)})`);
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `Server error ${res.status}`);
+    const detail = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail);
+    throw new Error(detail || `Server error ${res.status}`);
   }
 
   return res.json();
