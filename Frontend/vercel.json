@@ -1,0 +1,11 @@
+{
+  "buildCommand": "cd Monagrid && npm install && npx expo export --platform web",
+  "outputDirectory": "Monagrid/dist",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
