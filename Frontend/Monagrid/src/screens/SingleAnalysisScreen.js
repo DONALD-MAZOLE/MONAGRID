@@ -14,7 +14,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../theme/colors';
 import GradientButton from '../components/GradientButton';
 import StatusCard from '../components/StatusCard';
-import ProbabilityBar from '../components/ProbabilityBar';
 import { predictSingle } from '../services/apiService';
 
 export default function SingleAnalysisScreen() {
@@ -80,10 +79,7 @@ export default function SingleAnalysisScreen() {
     }
   };
 
-  // ── Probability entries from API response ─────────────────
-  const probEntries = result?.probabilities
-    ? Object.entries(result.probabilities)
-    : [];
+
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -127,7 +123,7 @@ export default function SingleAnalysisScreen() {
         {loading && (
           <View style={styles.loadingBox}>
             <ActivityIndicator color={Colors.green} size="large" />
-            <Text style={styles.loadingText}>Sending to Monagrid AI model...</Text>
+            <Text style={styles.loadingText}>Running two-stage AI analysis...</Text>
           </View>
         )}
 
@@ -144,24 +140,7 @@ export default function SingleAnalysisScreen() {
         {result && !loading && (
           <View style={styles.resultsBox}>
             <Text style={styles.resultsHeading}>Analysis Results</Text>
-
-            <StatusCard
-              label={result.label}
-              confidence={result.confidence}
-              confidencePct={result.confidence_pct}
-              description={result.description}
-              severity={result.severity}
-            />
-
-            {/* Probability distribution from API */}
-            {probEntries.length > 0 && (
-              <>
-                <Text style={styles.matrixTitle}>Probability Distribution</Text>
-                {probEntries.map(([lbl, score]) => (
-                  <ProbabilityBar key={lbl} label={lbl} score={score} />
-                ))}
-              </>
-            )}
+            <StatusCard result={result} />
           </View>
         )}
       </ScrollView>
@@ -244,5 +223,4 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   resultsHeading: { color: Colors.white, fontSize: 17, fontWeight: '700', marginBottom: 10 },
-  matrixTitle:    { color: Colors.white, fontSize: 14, fontWeight: '600', marginTop: 14, marginBottom: 6 },
 });

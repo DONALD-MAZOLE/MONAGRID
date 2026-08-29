@@ -22,6 +22,13 @@ function labelColor(label) {
   return label.toUpperCase() === 'HEALTHY' ? Colors.green : Colors.redDark;
 }
 
+const FAULT_ICONS = {
+  'Bird-drop':         '🐦',
+  'Dusty':             '🌫️',
+  'Electrical-damage': '⚡',
+  'Physical-Damage':   '🔨',
+};
+
 export default function BatchAnalysisScreen() {
   const [images, setImages]   = useState([]);
   const [loading, setLoading] = useState(false);
@@ -145,12 +152,16 @@ export default function BatchAnalysisScreen() {
                 <Text style={[styles.tableCell, styles.colNo]}>#</Text>
                 <Text style={[styles.tableCell, styles.colImg]}>Image</Text>
                 <Text style={[styles.tableCell, styles.colCond]}>Result</Text>
-                <Text style={[styles.tableCell, styles.colConf]}>Confidence</Text>
+                <Text style={[styles.tableCell, styles.colFault]}>Fault Type</Text>
+                <Text style={[styles.tableCell, styles.colConf]}>Conf.</Text>
               </View>
 
               {results.map((r, idx) => {
                 const pred = r.prediction || {};
                 const hasError = !!r.error;
+                const fault = pred.fault_detail;
+                const faultLabel = fault?.label || '—';
+                const faultIcon = fault ? (FAULT_ICONS[fault.label] || '') : '';
                 return (
                   <View
                     key={idx}
@@ -175,6 +186,12 @@ export default function BatchAnalysisScreen() {
                       numberOfLines={1}
                     >
                       {hasError ? 'Error' : (pred.label || '—')}
+                    </Text>
+                    <Text
+                      style={[styles.tableCell, styles.colFault]}
+                      numberOfLines={1}
+                    >
+                      {hasError ? '—' : (fault ? `${faultIcon} ${faultLabel}` : '✅ N/A')}
                     </Text>
                     <Text style={[styles.tableCell, styles.colConf]}>
                       {hasError ? '—' : (pred.confidence_pct || '—')}
@@ -275,9 +292,10 @@ const styles = StyleSheet.create({
   rowEven: { backgroundColor: 'rgba(255,255,255,0.01)' },
   rowOdd:  { backgroundColor: 'transparent' },
 
-  tableCell: { color: Colors.textPrimary, fontSize: 12 },
-  colNo:   { width: 24, color: Colors.textSecondary },
-  colImg:  { flex: 2, paddingRight: 6 },
-  colCond: { flex: 1.5, paddingRight: 6 },
-  colConf: { width: 76, textAlign: 'right' },
+  tableCell: { color: Colors.textPrimary, fontSize: 11 },
+  colNo:    { width: 20, color: Colors.textSecondary },
+  colImg:   { flex: 2, paddingRight: 4 },
+  colCond:  { flex: 1.2, paddingRight: 4 },
+  colFault: { flex: 1.8, paddingRight: 4 },
+  colConf:  { width: 54, textAlign: 'right' },
 });

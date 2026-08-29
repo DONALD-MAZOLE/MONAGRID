@@ -5,16 +5,16 @@ import { Colors } from '../theme/colors';
 /**
  * A single probability row: label on left, progress bar on right
  */
-export default function ProbabilityBar({ label, score }) {
+export default function ProbabilityBar({ label, score, textColor, trackColor }) {
   const pct = Math.min(Math.max(score, 0), 1);
 
   return (
     <View style={styles.row}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.trackOuter}>
+      <Text style={[styles.label, textColor && { color: textColor }]}>{label}</Text>
+      <View style={[styles.trackOuter, trackColor && { backgroundColor: trackColor }]}>
         <View style={[styles.trackFill, { width: `${(pct * 100).toFixed(1)}%` }]} />
       </View>
-      <Text style={styles.score}>{(pct * 100).toFixed(1)}%</Text>
+      <Text style={[styles.score, textColor && { color: textColor }]}>{(pct * 100).toFixed(1)}%</Text>
     </View>
   );
 }
