@@ -83,6 +83,15 @@ export default function BatchAnalysisScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        {/* Watermark Logo */}
+        <View style={styles.watermarkContainer} pointerEvents="none">
+          <Image 
+            source={require('../../assets/Monagrid.png')} 
+            style={styles.watermarkImage} 
+            resizeMode="contain" 
+          />
+        </View>
+
         <Text style={styles.heading}>Real-Time Solar Panel Inspection</Text>
         <Text style={styles.sub}>Upload multiple images for fleet batch analysis</Text>
 
@@ -210,10 +219,22 @@ export default function BatchAnalysisScreen() {
 const styles = StyleSheet.create({
   safe:      { flex: 1, backgroundColor: Colors.black },
   container: { flex: 1, backgroundColor: Colors.black },
-  content:   { padding: 16, paddingBottom: 40 },
+  content:   { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 40 },
 
-  heading: { color: Colors.white, fontSize: 20, fontWeight: '800', marginBottom: 6 },
-  sub:     { color: Colors.textSecondary, fontSize: 13, marginBottom: 20 },
+  heading: { color: Colors.white, fontSize: 20, fontWeight: '800', marginBottom: 6, zIndex: 1 },
+  sub:     { color: Colors.textSecondary, fontSize: 13, marginBottom: 20, zIndex: 1 },
+
+  watermarkContainer: {
+    position: 'absolute',
+    top: 4,
+    left: 16,
+    zIndex: 0,
+    opacity: 0.15,
+  },
+  watermarkImage: {
+    width: 250,
+    height: 70,
+  },
 
   uploadArea: {
     backgroundColor: Colors.cardBg2,

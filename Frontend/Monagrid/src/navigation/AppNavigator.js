@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Image, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import SingleAnalysisScreen from '../screens/SingleAnalysisScreen';
@@ -13,7 +14,9 @@ export default function AppNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerStyle: { backgroundColor: Colors.black, borderBottomWidth: 0, elevation: 0, shadowOpacity: 0 },
-        headerTitleStyle: { color: Colors.white, fontWeight: '800', fontSize: 18 },
+        headerTitle: 'MONAGRID',
+        headerTitleAlign: 'left',
+        headerTitleStyle: { color: Colors.white, fontWeight: '900', fontSize: 20, letterSpacing: 1 },
         headerTintColor: Colors.white,
         tabBarStyle: {
           backgroundColor: Colors.cardBg,

@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   SafeAreaView,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../theme/colors';
@@ -47,12 +48,41 @@ export default function SingleAnalysisScreen() {
 
   // ── Capture from camera ───────────────────────────────────
   const takePhoto = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Permission Required', 'Please allow camera access.');
+    if (Platform.OS === 'web') {
+      // On web/laptop: browser's file picker with camera capture attribute
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.capture = 'environment'; // opens rear camera on mobile browsers
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const uri = URL.createObjectURL(file);
+        setImageUri(uri);
+        setImageName(file.name || 'captured_panel.jpg');
+        setImageMime(file.type || 'image/jpeg');
+        setResult(null);
+        setError(null);
+      };
+      input.click();
       return;
     }
-    const photo = await ImagePicker.launchCameraAsync({ quality: 1 });
+
+    // Native (Android / iOS): use expo-image-picker camera
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(
+        'Camera Permission Required',
+        'Please allow camera access in your device settings to capture solar panel images.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    const photo = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 1,
+      allowsEditing: false,
+    });
     if (!photo.canceled && photo.assets.length > 0) {
       const asset = photo.assets[0];
       setImageUri(asset.uri);
@@ -84,6 +114,16 @@ export default function SingleAnalysisScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        
+        {/* Watermark Logo */}
+        <View style={styles.watermarkContainer} pointerEvents="none">
+          <Image 
+            source={require('../../assets/Monagrid.png')} 
+            style={styles.watermarkImage} 
+            resizeMode="contain" 
+          />
+        </View>
+
         <Text style={styles.heading}>Real-time Solar Panel Inspection</Text>
         <Text style={styles.sub}>Upload or capture a solar panel image for AI-powered analysis</Text>
 
@@ -151,10 +191,22 @@ export default function SingleAnalysisScreen() {
 const styles = StyleSheet.create({
   safe:      { flex: 1, backgroundColor: Colors.black },
   container: { flex: 1, backgroundColor: Colors.black },
-  content:   { padding: 16, paddingBottom: 40 },
+  content:   { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 40 },
 
-  heading: { color: Colors.white, fontSize: 20, fontWeight: '800', marginBottom: 6, letterSpacing: 0.2 },
-  sub:     { color: Colors.textSecondary, fontSize: 13, marginBottom: 20, lineHeight: 18 },
+  heading: { color: Colors.white, fontSize: 20, fontWeight: '800', marginBottom: 6, letterSpacing: 0.2, zIndex: 1 },
+  sub:     { color: Colors.textSecondary, fontSize: 13, marginBottom: 20, lineHeight: 18, zIndex: 1 },
+
+  watermarkContainer: {
+    position: 'absolute',
+    top: 4,
+    left: 16,
+    zIndex: 0,
+    opacity: 0.15,
+  },
+  watermarkImage: {
+    width: 250,
+    height: 70,
+  },
 
   uploadRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   uploadBtn: {

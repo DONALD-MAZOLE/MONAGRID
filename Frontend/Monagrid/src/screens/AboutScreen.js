@@ -117,7 +117,7 @@ export default function AboutScreen() {
 const styles = StyleSheet.create({
   safe:      { flex: 1, backgroundColor: Colors.black },
   container: { flex: 1, backgroundColor: Colors.black },
-  content:   { padding: 16, paddingBottom: 40 },
+  content:   { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 40 },
 
   hero: {
     backgroundColor: Colors.cardBg,
