@@ -83,15 +83,6 @@ export default function BatchAnalysisScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* Watermark Logo */}
-        <View style={styles.watermarkContainer} pointerEvents="none">
-          <Image 
-            source={require('../../assets/Monagrid.png')} 
-            style={styles.watermarkImage} 
-            resizeMode="contain" 
-          />
-        </View>
-
         <Text style={styles.heading}>Real-Time Solar Panel Inspection</Text>
         <Text style={styles.sub}>Upload multiple images for fleet batch analysis</Text>
 

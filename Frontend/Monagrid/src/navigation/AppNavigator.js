@@ -1,6 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Image, View, Text } from 'react-native';
+import { Image, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import SingleAnalysisScreen from '../screens/SingleAnalysisScreen';
@@ -9,14 +9,30 @@ import AboutScreen from '../screens/AboutScreen';
 
 const Tab = createBottomTabNavigator();
 
+const LogoHeader = () => (
+  <View style={{ paddingLeft: 6, justifyContent: 'center' }}>
+    <Image
+      source={require('../../assets/Monagrid.png')}
+      style={{ width: 1000, height: 80 }}
+      resizeMode="contain"
+    />
+  </View>
+);
+
 export default function AppNavigator() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        headerStyle: { backgroundColor: Colors.black, borderBottomWidth: 0, elevation: 0, shadowOpacity: 0 },
-        headerTitle: 'MONAGRID',
+        headerStyle: {
+          backgroundColor: Colors.black,
+          borderBottomWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
+          height: 70,              // taller header so logo is not clipped
+        },
+        headerTitle: () => <LogoHeader />,
         headerTitleAlign: 'left',
-        headerTitleStyle: { color: Colors.white, fontWeight: '900', fontSize: 20, letterSpacing: 1 },
+        headerTitleContainerStyle: { left: 0, right: 0 },
         headerTintColor: Colors.white,
         tabBarStyle: {
           backgroundColor: Colors.cardBg,
@@ -40,17 +56,17 @@ export default function AppNavigator() {
       <Tab.Screen
         name="Single"
         component={SingleAnalysisScreen}
-        options={{ title: 'Single Analysis', tabBarLabel: 'Single' }}
+        options={{ tabBarLabel: 'Single' }}
       />
       <Tab.Screen
         name="Batch"
         component={BatchAnalysisScreen}
-        options={{ title: 'Batch Analysis', tabBarLabel: 'Batch' }}
+        options={{ tabBarLabel: 'Batch' }}
       />
       <Tab.Screen
         name="About"
         component={AboutScreen}
-        options={{ title: 'About Monagrid', tabBarLabel: 'About' }}
+        options={{ tabBarLabel: 'About' }}
       />
     </Tab.Navigator>
   );

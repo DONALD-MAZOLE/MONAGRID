@@ -114,16 +114,6 @@ export default function SingleAnalysisScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        
-        {/* Watermark Logo */}
-        <View style={styles.watermarkContainer} pointerEvents="none">
-          <Image 
-            source={require('../../assets/Monagrid.png')} 
-            style={styles.watermarkImage} 
-            resizeMode="contain" 
-          />
-        </View>
-
         <Text style={styles.heading}>Real-time Solar Panel Inspection</Text>
         <Text style={styles.sub}>Upload or capture a solar panel image for AI-powered analysis</Text>
 
